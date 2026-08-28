@@ -1,15 +1,16 @@
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from autoencoder import SparseAutoencoder, sparse_loss
+from autoencoder import SparseAutoencoder
 
 
-DATA_PATH = "data/processed/prompt_activations_10000.pt"
-MODEL_PATH = "models/sparse_autoencoder_10000.pt"
+DATA_PATH = "data/processed/prompt_train_activations_full.pt"
+MODEL_PATH = "models/sparse_autoencoder_full.pt"
 
-BATCH_SIZE = 32
+BATCH_SIZE = 128
 EPOCHS = 20
 LEARNING_RATE = 0.001
+
 
 device = torch.device(
     "cuda" if torch.cuda.is_available() else "cpu"
@@ -19,12 +20,14 @@ print("Using device:", device)
 
 data = torch.load(
     DATA_PATH,
-    map_location=device
+    map_location="cpu"
 )
 
 features = data["features"].float()
 
-dataset = TensorDataset(features)
+dataset = TensorDataset(
+    features
+)
 
 loader = DataLoader(
     dataset,
@@ -42,39 +45,40 @@ optimizer = torch.optim.Adam(
     lr=LEARNING_RATE
 )
 
+loss_function = torch.nn.MSELoss()
+
 for epoch in range(EPOCHS):
 
     total_loss = 0.0
 
     for batch in loader:
 
-        x = batch[0].to(device)
+        inputs = batch[0].to(device)
 
         optimizer.zero_grad()
 
-        reconstructed, sparse_features = model(x)
+        reconstructed, sparse_features = model(
+            inputs
+        )
 
-        loss = sparse_loss(
-            x,
+        loss = loss_function(
             reconstructed,
-            sparse_features
+            inputs
         )
 
         loss.backward()
 
         optimizer.step()
 
-        total_loss += loss.item()
+        total_loss += loss.item() * inputs.size(0)
 
-    average_loss = total_loss / len(loader)
+    average_loss = (
+        total_loss / len(dataset)
+    )
 
     print(
-        "Epoch:",
-        epoch + 1,
-        "/",
-        EPOCHS,
-        "Loss:",
-        average_loss
+        f"Epoch: {epoch + 1} / {EPOCHS} "
+        f"Loss: {average_loss}"
     )
 
 torch.save(
@@ -84,4 +88,7 @@ torch.save(
 
 print("\nTraining completed.")
 
-print("Model saved to:", MODEL_PATH)
+print(
+    "Model saved to:",
+    MODEL_PATH
+)
