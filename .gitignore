@@ -218,11 +218,13 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Dataset files
-data/raw/
-data/processed/
+# Keep project datasets in Git/Git LFS
+# data/raw/
+# data/processed/
 
 # Trained models
-models/
+# Keep project models in Git/Git LFS
+# models/
 
 # Python cache
 __pycache__/
