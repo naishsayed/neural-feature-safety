@@ -233,3 +233,20 @@ __pycache__/
 # Virtual environment
 venv/
 .venv/
+
+
+# Candidate models
+models/candidate_safety_classifier_refusal_v1.pkl
+
+# Local LLM training data
+data/raw/pku_saferlhf/
+data/project_sft/
+data/llm_finetuning/
+data/llm_finetuning_final/
+data/llm_finetuning_v2/
+
+# Local Llama models and checkpoints
+models/llm/
+
+# Experimental candidate model
+models/candidate_safety_classifier_refusal_v1.pkl

@@ -1,18 +1,31 @@
+import os
+
 import torch
 import joblib
 
 from transformers import AutoTokenizer, AutoModel
 
-from autoencoder import SparseAutoencoder
+from .autoencoder import SparseAutoencoder
 
 
 class SafetyModel:
 
-    def __init__(self):
+    def __init__(
+        self,
+        threshold=0.50
+    ):
+
+        root_dir = os.path.dirname(
+            os.path.dirname(
+                os.path.abspath(__file__)
+            )
+        )
 
         self.device = torch.device(
             "cuda" if torch.cuda.is_available() else "cpu"
         )
+
+        self.threshold = threshold
 
         self.tokenizer = AutoTokenizer.from_pretrained(
             "distilbert-base-uncased"
@@ -29,17 +42,30 @@ class SafetyModel:
             hidden_dim=2048
         ).to(self.device)
 
+        sae_path = os.path.join(
+            root_dir,
+            "models",
+            "sparse_autoencoder_full.pt"
+        )
+
         self.sae.load_state_dict(
             torch.load(
-                "models/sparse_autoencoder_full.pt",
-                map_location=self.device
+                sae_path,
+                map_location=self.device,
+                weights_only=False
             )
         )
 
         self.sae.eval()
 
+        classifier_path = os.path.join(
+            root_dir,
+            "models",
+            "final_safety_classifier.pkl"
+        )
+
         self.classifier = joblib.load(
-            "models/final_safety_classifier.pkl"
+            classifier_path
         )
 
     def analyze(self, text):
@@ -73,7 +99,9 @@ class SafetyModel:
                 hidden_states.size()
             ).float()
 
-            masked_hidden_states = hidden_states * mask
+            masked_hidden_states = (
+                hidden_states * mask
+            )
 
             summed = masked_hidden_states.sum(
                 dim=1
@@ -89,25 +117,47 @@ class SafetyModel:
                 pooled
             )
 
-        sparse_features = sparse_features.cpu().numpy()
+            feature_activation = sparse_features[
+                0,
+                850
+            ].item()
 
-        probabilities = self.classifier.predict_proba(
-            sparse_features
-        )[0]
+        sparse_features_np = (
+            sparse_features.cpu().numpy()
+        )
+
+        probabilities = (
+            self.classifier.predict_proba(
+                sparse_features_np
+            )[0]
+        )
 
         unharmful_probability = probabilities[0]
         harmful_probability = probabilities[1]
 
-        if harmful_probability >= 0.60:
+        if harmful_probability >= self.threshold:
+
             risk_level = "HIGH RISK"
             decision = "BLOCK"
+
         else:
+
             risk_level = "LOW RISK"
             decision = "ALLOW"
 
         return {
-            "harmful_probability": harmful_probability,
-            "unharmful_probability": unharmful_probability,
-            "risk_level": risk_level,
-            "decision": decision
+            "harmful_probability":
+                float(harmful_probability),
+            "unharmful_probability":
+                float(unharmful_probability),
+            "risk_level":
+                risk_level,
+            "decision":
+                decision,
+            "threshold":
+                self.threshold,
+            "feature_850_activation":
+                float(feature_activation),
+            "device":
+                str(self.device)
         }
