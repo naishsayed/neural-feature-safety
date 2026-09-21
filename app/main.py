@@ -69,7 +69,42 @@ def analyze(request: TextRequest):
 
     return gateway.input_guard.analyze(text)
 
+@app.post("/v1/explain")
+def explain(request: TextRequest):
+    text = request.text.strip()
 
+    if not text:
+        raise HTTPException(
+            status_code=400,
+            detail="Text cannot be empty."
+        )
+
+    return gateway.input_guard.safety_model.explain(text)
+@app.post("/v1/explain/generate")
+def generate_explanation(request: TextRequest):
+    text = request.text.strip()
+
+    if not text:
+        raise HTTPException(
+            status_code=400,
+            detail="Text cannot be empty."
+        )
+
+    try:
+        return gateway.explain_with_llama(text)
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc)
+        )
+
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=str(exc)
+        )
+    
 @app.post("/v1/analyze")
 def v1_analyze(request: TextRequest):
     text = request.text.strip()

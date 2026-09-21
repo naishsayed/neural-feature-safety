@@ -17,7 +17,7 @@ type HistoryItem = {
   harmful_probability: number;
   risk_level: string;
   decision: string;
-  feature_850_activation: number;
+  feature_850_activation?: number;
   device: string;
   timestamp: string;
 };
@@ -180,7 +180,9 @@ export default function HistoryPage() {
                               </p>
 
                               <p className="mt-1 font-mono text-xs font-bold text-cyan-600">
-                                {item.feature_850_activation.toFixed(4)}
+                                {typeof item.feature_850_activation === "number"
+                                    ? item.feature_850_activation.toFixed(4)
+                                    : "N/A"}
                               </p>
                             </div>
 
